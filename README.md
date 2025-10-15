@@ -41,3 +41,13 @@ A.M.I. acts as a true stream companion by directly interacting with the broadcas
     OBS Control: She can trigger on-screen animations for special events and easter eggs, control the visibility of sources, and update text files used for on-screen labels (like "Latest Follower").
 
     External Webhooks: A built-in web server listens for POST requests from services like Ko-fi, allowing for real-time, on-stream donation alerts.
+    
+## 🤖 Bot Versions
+
+This repository contains three distinct versions of the A.M.I. bot, each with a specific purpose:
+
+    bot_new.py (Primary Bot): This is the main, stable version of A.M.I. It includes all features described above, including the full integration with Google's Gemini API. This is the script intended for normal, everyday operation.
+
+    bot_experimental.py (Development Bot): This script serves as the unstable testing ground. New features, code refactoring, and experimental changes are implemented and tested here first. It may contain bugs or incomplete features and is not recommended for a live stream.
+
+    bot_backup.py (Backup Bot - Non-AI): This is a fallback version designed for maximum stability and uptime. It contains all features except for the AI integration. The !askami command in this version uses the preset, keyword-based response system. It should be used if the Gemini API is down or if a lightweight, AI-free instance is preferred.
