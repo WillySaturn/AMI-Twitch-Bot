@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.M.I. Overlay</title>
+    <style>
+        /* All of my original, beautiful CSS is unchanged */
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; }
+        #ami-container { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 800px; height: 800px; }
+        .ami-part { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; transition: opacity 0.2s ease-in-out; }
+        .drill { transition: transform 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.2s ease-in-out; animation: drillIdleHover 2.5s infinite ease-in-out; }
+        .body-state { animation: bodyIdleHover 2.8s infinite ease-in-out; }
+        #drill-right { z-index: 1; }
+        .body-state { z-index: 2; }
+        #drill-left { z-index: 3; }
+        .body-state { opacity: 0; }
+        #body-neutral { opacity: 1; }
+        body.talking #body-neutral { opacity: 0; }
+        body.talking #body-talking { opacity: 1; }
+        body.talking .drill { animation: drillTalkingBob 1.2s infinite ease-in-out; }
+        body.talking .body-state { animation: bodyTalkingBob 1.4s infinite ease-in-out; }
+        body.happy #body-neutral { opacity: 0; }
+        body.happy #body-happy { opacity: 1; }
+        body.happy .drill { animation: none; }
+        body.happy #drill-left { transform: translateY(-160px); }
+        body.happy #drill-right { transform: translateY(-160px); }
+        body.excited #body-neutral { opacity: 0; }
+        body.excited #body-happy { opacity: 1; }
+        body.excited .drill { animation: excitedBounce 0.4s infinite ease-in-out; }
+        body.excited .body-state { animation: excitedBodyBounce 0.4s infinite ease-in-out; }
+        body.disabled #body-neutral { opacity: 0; }
+        body.disabled #body-disabled { opacity: 1; }
+        body.disabled .drill { opacity: 0; }
+        body.disabled .drill,
+        body.disabled .body-state { animation: none; }
+        @keyframes drillIdleHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        @keyframes bodyIdleHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes drillTalkingBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+        @keyframes bodyTalkingBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes excitedBounce {
+            0%, 100% { transform: translateX(0) translateY(-160px) rotate(0); }
+            25% { transform: translateX(-15px) translateY(-160px) rotate(-3deg); }
+            75% { transform: translateX(15px) translateY(-160px) rotate(3deg); }
+        }
+        @keyframes excitedBodyBounce {
+            0%, 100% { transform: translateY(0); } /* Start/end at normal position */
+            25% { transform: translateY(-20px); } /* Bounce up */
+            75% { transform: translateY(-5px); } /* Bounce up a little less */
+        }
+    </style>
+</head>
+<body>
+    <div id="ami-container">
+        <img src="ami_drill_left.png" id="drill-left" class="ami-part drill">
+        <img src="ami_drill_right.png" id="drill-right" class="ami-part drill">
+        <img src="ah-n-bald.png" id="body-neutral" class="ami-part body-state">
+        <img src="ah-n-open-bald.png" id="body-talking" class="ami-part body-state">
+        <img src="ah-n-cheer-bald.png" id="body-happy" class="ami-part body-state">
+        <img src="ah-replace battery.png" id="body-disabled" class="ami-part body-state">
+    </div>
+
+    <script>
+        // THIS SCRIPT IS THE ONLY CHANGE
+        // It uses the more reliable XMLHttpRequest from my successful test.
+        const body = document.body;
+        let lastState = '';
+
+        function checkState() {
+            const xhr = new XMLHttpRequest();
+            const url = './ami_state.txt?t=' + new Date().getTime(); // Cache-busting
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 400) {
+                    const state = xhr.responseText.trim().toLowerCase();
+                    if (state !== lastState) {
+                        console.log('New State:', state);
+                        // This is the class-switching logic from my original file
+                        body.classList.remove('neutral', 'talking', 'happy', 'disabled', 'excited');
+                        if (state) {
+                            body.classList.add(state);
+                        }
+                        lastState = state;
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                // On an error, just default to neutral to be safe.
+                body.classList.remove('talking', 'happy', 'disabled', 'excited');
+            };
+
+            xhr.send();
+        }
+
+        setInterval(checkState, 250);
+    </script>
+</body>
+</html>
