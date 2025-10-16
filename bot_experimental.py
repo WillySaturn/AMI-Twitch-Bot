@@ -84,7 +84,7 @@ spawn_timestamps = []
 
 # --- API Clients & Models ---
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 polly_client = boto3.client('polly')
 sio = socketio.Client()
 twitch_socket = None
@@ -115,6 +115,8 @@ infraction_strikes = {}
 CONSECUTIVE_ERROR_COUNT = 0
 request_queue = Queue()
 speaking_queue = Queue()
+recent_event_cache = set()
+CACHE_EXPIRATION_TIME = 60 # Time in seconds to ignore duplicate events
 death_counter = 0
 last_lightning_flash = 0
 last_teto_trigger = 0
@@ -428,6 +430,23 @@ def set_ami_state(state: str):
     except Exception as e:
         print(f"--- OBS Error: Could not refresh source. Is OBS running and WebSocket server on? Error: {e} ---")
 
+def add_to_event_cache(event_id):
+    """
+    Adds a unique event ID to the cache to prevent duplicates.
+    Removes the ID after CACHE_EXPIRATION_TIME seconds.
+    """
+    print(f"--- CACHE: Adding '{event_id}' to cache for {CACHE_EXPIRATION_TIME}s ---")
+    recent_event_cache.add(event_id)
+
+    def remove_from_cache():
+        try:
+            recent_event_cache.remove(event_id)
+            print(f"--- CACHE: Removing '{event_id}' from cache. ---")
+        except KeyError:
+            pass  # Item was already removed, no problem
+
+    # Start a timer to remove this event from the cache after the delay
+    threading.Timer(CACHE_EXPIRATION_TIME, remove_from_cache).start()
 
 def speak_and_react(text_to_speak, state='talking'):
     try:
@@ -1535,54 +1554,132 @@ def start_streamlabs_listener():
 
     @sio.event
     def event(data):
-        # The raw data print statement has been removed.
+        print(f"--- STREAMLABS RECEIVED: {data} ---")
+
+        # Gracefully handle events that might not have message data
+        if not data.get('message') or not isinstance(data.get('message'), list) or len(data.get('message')) == 0:
+            # Handle non-message events like 'raid'
+            if data.get('type') == 'raid':
+                message_data = data
+            else:
+                return  # Ignore other malformed or unhandled events
+        else:
+            message_data = data['message'][0]
 
         event_type = data.get('type')
-        if not event_type:
-            return # Ignore events without a type
 
-        # NEW: A list of event types to silently ignore.
-        # You can add more event types to this list in the future if needed.
-        ignored_events = ['rollEndCredits']
-        if event_type in ignored_events:
-            return # Exit quietly if the event type is in our ignore list.
-
-        # Only try to parse message data for events we know should have it.
-        if event_type in ['follow', 'subscription', 'bits']:
-            messages = data.get('message')
-
-            # If 'message' key is missing or the list is empty, stop.
-            if not messages:
-                print(f"--- Streamlabs: Received '{event_type}' event with no message data. Skipping. ---")
-                return
-
-            message = messages[0]
-            name = message.get('name')
-
-            # If the user's name is missing, stop.
-            if not name:
-                print(f"--- Streamlabs: Received '{event_type}' event with no name. Skipping. ---")
-                return
-
-            # Now that we've safely gotten the data, handle the event.
+        try:
+            # --- Follow Event ---
             if event_type == 'follow':
+                name = message_data.get('name', 'Someone')
+                event_id = f"follow:{name}"
+                if event_id in recent_event_cache: return
+                add_to_event_cache(event_id)
+
                 print(f"--- STREAMLABS EVENT: Follow from {name} ---")
                 save_stream_label(LATEST_FOLLOWER_FILE, f"Latest Follower: {name}    ")
                 thank_you_message = f"Hey, a new follower! Thank you so much for the follow, {name}!"
                 speaking_queue.put({'text': thank_you_message, 'state': 'happy'})
 
+            # --- Subscription & Single Gift Event ---
             elif event_type == 'subscription':
-                print(f"--- STREAMLABS EVENT: Subscription from {name} ---")
-                save_stream_label(LATEST_SUBSCRIBER_FILE, f"Latest Subscriber: {name}    ")
+                gifter_name = message_data.get('gifter')
 
+                if gifter_name:
+                    # --- IT IS A SINGLE GIFT SUB ---
+                    total_gifts = 1
+                    event_id = f"gift:{gifter_name}:{total_gifts}"
+                    if event_id in recent_event_cache: return
+                    add_to_event_cache(event_id)
+
+                    recipient_name = message_data.get('name', 'someone in the community')
+                    print(f"--- STREAMLABS EVENT: 1 gift sub from {gifter_name} to {recipient_name} ---")
+                    thank_you_message = f"A gift sub! {gifter_name} just gifted a subscription to {recipient_name}! Thank you for sharing the love!"
+                    speaking_queue.put({'text': thank_you_message, 'state': 'excited'})
+
+                else:
+                    # --- IT IS A NEW SUB or PRIME SUB ---
+                    name = message_data.get('name', 'Someone')
+                    event_id = f"sub:{name}"
+                    if event_id in recent_event_cache: return
+                    add_to_event_cache(event_id)
+
+                    print(f"--- STREAMLABS EVENT: Subscription from {name} ---")
+                    save_stream_label(LATEST_SUBSCRIBER_FILE, f"Latest Subscriber: {name}    ")
+                    sub_plan = message_data.get('sub_plan', 'a Tier 1')
+                    thank_you_message = ""
+                    if 'Prime' in sub_plan:
+                        thank_you_message = f"Wow, a Prime Gaming sub! Thank you so much, {name}, for linking up your systems to support the channel!"
+                    else:
+                        thank_you_message = f"A new subscriber! Welcome to the Saturn Crew, {name}! It's so cool to have you here!"
+                    speaking_queue.put({'text': thank_you_message, 'state': 'happy'})
+
+            # --- Mass Gift Sub Event ---
+            elif event_type == 'subMysteryGift':
+                gifter_name = message_data.get('gifter', 'An anonymous gifter')
+                total_gifts = int(message_data.get('amount', 2))  # Default to 2, as it's a "mystery" gift
+                event_id = f"gift:{gifter_name}:{total_gifts}"
+                if event_id in recent_event_cache: return
+                add_to_event_cache(event_id)
+
+                print(f"--- STREAMLABS EVENT: {total_gifts} MYSTERY gift sub(s) from {gifter_name} ---")
+
+                thank_you_message = f"INCOMING SUB BOMBS! {gifter_name} just gifted {total_gifts} subs to the community! That's incredible, thank you so much!"
+                speaking_queue.put({'text': thank_you_message, 'state': 'excited'})
+
+            # --- Resubscription Event ---
+            elif event_type == 'resub':
+                name = message_data.get('name', 'Someone')
+                months = message_data.get('months', 'many')
+                event_id = f"resub:{name}"
+                if event_id in recent_event_cache: return
+                add_to_event_cache(event_id)
+
+                print(f"--- STREAMLABS EVENT: Resub from {name} for {months} months ---")
+                save_stream_label(LATEST_SUBSCRIBER_FILE, f"Latest Resub: {name} ({months} mo)    ")
+                thank_you_message = f"A resub! {name} has been part of the crew for {months} months! Thank you for your amazing support!"
+                speaking_queue.put({'text': thank_you_message, 'state': 'happy'})
+
+            # --- Bits/Cheer Event ---
             elif event_type == 'bits':
-                amount = message.get('amount', '0')
+                name = message_data.get('name', 'An anonymous cheerer')
+                amount = int(message_data.get('amount', 0))
+                event_id = f"bits:{name}:{amount}"
+                if event_id in recent_event_cache: return
+                add_to_event_cache(event_id)
+
                 print(f"--- STREAMLABS EVENT: Cheer from {name} for {amount} bits ---")
                 save_stream_label(LATEST_CHEER_FILE, f"Latest Cheer: {name} - {amount}    ")
-        else:
-            # This will still let you know about any other genuinely new event types.
-            print(f"--- Streamlabs: Received unhandled event type '{event_type}'. ---")
+                thank_you_message = ""
+                state = 'happy'
 
+                if amount >= 10000:
+                    state = 'excited'
+                    thank_you_message = f"CRITICAL ERROR! High-generosity overflow! Thank you SO, SO MUCH {name}, for the {amount} bits!"
+                elif amount >= 5000:
+                    state = 'excited'
+                    thank_you_message = f"OH MY GOSH! Thank you for the massive {amount} bits, {name}!"
+                elif amount > 0:
+                    # --- THIS IS THE CORRECTED LINE ---
+                    thank_you_message = f"Wow! Thank you for the {amount} bits, {name}!"
+
+                if thank_you_message:
+                    speaking_queue.put({'text': thank_you_message, 'state': state})
+
+            # --- Raid Event ---
+            elif event_type == 'raid':
+                name = message_data.get('name', 'a mysterious channel')
+                viewers = message_data.get('raiders', 'many')
+                event_id = f"raid:{name}:{viewers}"
+                if event_id in recent_event_cache: return
+                add_to_event_cache(event_id)
+
+                print(f"--- STREAMLABS EVENT: Raid from {name} with {viewers} viewers ---")
+                thank_you_message = f"Incoming raid! Welcome {viewers} viewers from {name}'s channel! Thank you for the raid!"
+                speaking_queue.put({'text': thank_you_message, 'state': 'excited'})
+
+        except Exception as e:
+            print(f"!!! ERROR processing Streamlabs event: {e}. Data: {data} !!!")
 
     sio.connect(f'https://sockets.streamlabs.com?token={STREAMLABS_TOKEN}', transports=['websocket'])
     sio.wait()
@@ -1628,18 +1725,28 @@ async def run_eventsub_listener_async():
                     await create_eventsub_subscription(websocket, session_id)
                     while True:
                         message = json.loads(await websocket.recv())
+                        print(f"--- EVENTSUB RECEIVED: {message} ---")
+
                         if message['metadata']['message_type'] == 'notification':
                             payload = message['payload']
                             event = payload['event']
                             sub_type = payload['subscription']['type']
-                            # --- THIS IS THE FIX ---
-                            # Safely get the user_name from the event, with a default value.
                             user_name = event.get('user_name', 'Someone')
+
                             if sub_type == 'channel.follow':
+                                event_id = f"follow:{event['user_name']}"
+                                if event_id in recent_event_cache: continue
+                                add_to_event_cache(event_id)
+
                                 save_stream_label(LATEST_FOLLOWER_FILE, f"Latest Follower: {event['user_name']}    ")
+                                # You can add a speaking_queue item here if you want A.M.I. to announce follows
+
                             elif sub_type == 'channel.subscribe':
-                                # This event handles NEW subs and Prime subs. Gift subs are handled separately.
                                 if not event.get('is_gift', False):
+                                    event_id = f"sub:{user_name}"
+                                    if event_id in recent_event_cache: continue
+                                    add_to_event_cache(event_id)
+
                                     tier = event.get('tier', '1000')
                                     thank_you_message = ""
                                     if tier == 'prime':
@@ -1651,20 +1758,23 @@ async def run_eventsub_listener_async():
                                     speaking_queue.put({'text': thank_you_message, 'state': 'happy'})
 
                             elif sub_type == 'channel.subscription.message':
-                                # This event handles RESUBS
+                                event_id = f"resub:{user_name}"
+                                if event_id in recent_event_cache: continue
+                                add_to_event_cache(event_id)
+
                                 months = event.get('cumulative_total', 1)
-                                user_message = event.get('message', {}).get('text', '')
-
                                 thank_you_message = f"A resub! {user_name} has been part of the crew for {months} months! Thank you for your amazing support!"
-
                                 save_stream_label(LATEST_SUBSCRIBER_FILE,
                                                   f"Latest Resub: {user_name} ({months} mo)    ")
                                 speaking_queue.put({'text': thank_you_message, 'state': 'happy'})
 
                             elif sub_type == 'channel.subscription.gift':
-                                # This event handles GIFTED subs
                                 total_gifts = event.get('total', 1)
                                 gifter_name = "An anonymous gifter" if event.get('is_anonymous', True) else user_name
+
+                                event_id = f"gift:{gifter_name}:{total_gifts}"
+                                if event_id in recent_event_cache: continue
+                                add_to_event_cache(event_id)
 
                                 if total_gifts > 1:
                                     thank_you_message = f"INCOMING SUB BOMBS! {gifter_name} just gifted {total_gifts} subs to the community! That's incredible, thank you so much!"
@@ -1672,14 +1782,17 @@ async def run_eventsub_listener_async():
                                     thank_you_message = f"A gift sub! {gifter_name} just gifted a subscription to the community! Thank you for sharing the love!"
 
                                 speaking_queue.put({'text': thank_you_message, 'state': 'excited'})
+
                             elif sub_type == 'channel.cheer':
-                                user = event.get('user_name', 'Anonymous')
-                                if event.get('is_anonymous', False):
-                                    user = "An anonymous cheerer"
+                                user = "An anonymous cheerer" if event.get('is_anonymous', False) else event.get(
+                                    'user_name', 'Anonymous')
                                 bits = event.get('bits', 0)
 
-                                save_stream_label(LATEST_CHEER_FILE, f"Latest Cheer: {user} - {bits}    ")
+                                event_id = f"bits:{user}:{bits}"
+                                if event_id in recent_event_cache: continue
+                                add_to_event_cache(event_id)
 
+                                save_stream_label(LATEST_CHEER_FILE, f"Latest Cheer: {user} - {bits}    ")
                                 thank_you_message = ""
                                 state = 'happy'
 
@@ -1688,7 +1801,7 @@ async def run_eventsub_listener_async():
                                     thank_you_message = f"CRITICAL ERROR! High-generosity overflow! Thank you SO, SO MUCH {user}, for the {bits} bits!"
                                 elif bits >= 5000:
                                     state = 'excited'
-                                    thank_you_message = f"OH MY GOSH! Thank you for the massive {bits} bits, {user}! That is incredible!"
+                                    thank_you_message = f"OH MY GOSH! Thank you for the massive {bits} bits, {user}!"
                                 elif bits > 0:
                                     thank_you_message = f"Wow! Thank you for the {bits} bits, {user}!"
 
@@ -1774,12 +1887,6 @@ async def run_eventsub_listener_async():
 
 def run_eventsub_listener():
     asyncio.run(run_eventsub_listener_async())
-
-
-def run_eventsub_listener():
-    """A simple wrapper to run the asynchronous EventSub listener."""
-    asyncio.run(run_eventsub_listener_async())
-
 
 # --- MAIN TWITCH BOT CONNECTION ---
 def run_twitch_bot():
