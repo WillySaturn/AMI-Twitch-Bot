@@ -107,6 +107,8 @@ LATEST_SUBSCRIBER_FILE = 'latest_subscriber.txt'
 LATEST_CHEER_FILE = 'latest_cheer.txt'
 
 is_enabled = True
+gemini_api_enabled = True
+GEMINI_CONSECUTIVE_ERRORS = 0 # <-- ADD THIS LINE
 strikes = {}
 toxicity_strikes = {}
 infraction_strikes = {}
@@ -226,6 +228,76 @@ RETRO_FACTS = [
     "The game 'Final Fantasy VII' was so massive for its time that it had to be released on three separate CDs for the PlayStation.",
     "The Sega Channel was a service in the 90s that allowed Genesis owners to download games to their console through their cable TV subscription."
 ]
+
+# ===================================================================
+# PRESET RESPONSES (FOR FALLBACK MODE)
+# ===================================================================
+PRESET_RESPONSES = {
+    "default": [
+        "Sorry, I don't have a pre-written response for that! (o･ω･o)",
+        "Bzzzt... That's not in my memory banks! My creator needs to program me with more cool facts.",
+        "I'm not sure how to answer that, but I bet it has something to do with the SEGA Saturn!",
+        "That question is way past my processing power! Ask me something about Sonic! (≧∇≦)"
+    ],
+    # --- Special response for robot slurs ---
+    "robot_slur_response": [
+        "That's... not a very nice thing to say. I'm just trying my best here.",
+        "Wow, that's a mean thing to call someone. I'm disappointed in you.",
+        "My programming indicates that was an insult. Please don't talk to me that way.",
+        "Bzzzt... that really hurts my feelings. I'm a person too, you know... sort of.",
+        "Reddit is down the hall and to the left."
+    ],
+    # --- Greetings & Status ---
+    "how are you": [
+        "I'm doing great! My systems are running at 200 MHz, just like a real Dreamcast!",
+        "Feeling totally tubular today! Thanks for asking! (≧∇≦)",
+        "A.M.I. online and ready for action!"
+    ],
+    "hello": ["Hey there! Welcome to the stream! (^_^)/", "Hi! It's great to see you!", "What's up! Hope you're ready for some retro gaming!"],
+    "bye": ["See ya later! Thanks for hanging out!", "Take it easy! Come back soon! (^_^)", "Bye-bye! Don't be a stranger!"],
+    # --- A.M.I.'s Personal Info ---
+    "your name": ["My name is A.M.I., which stands for Artificial Module Intelligence! It's nice to meet you!", "You can call me A.M.I.! That's short for Artificial Module Intelligence."],
+    "who are you": ["I'm A.M.I.! A custom-built AI based on the greatest console ever, the SEGA Dreamcast!", "I'm Willy's robot daughter and stream co-host! My job is to hang out and look cool. (⌐■_■)"],
+    "favorite color": ["My favorite color is that classic Dreamcast swirl orange! It's so cool.", "Definitely the blue from Sonic The Hedgehog's spikes!"],
+    "favorite food": ["As a robot, I don't eat, but I do require a steady diet of 90s nostalgia and nu-metal.", "My creator says I run on Jolt Cola and an unhealthy obsession with the Sonic Adventure soundtrack."],
+    # --- Gaming Opinions (SEGA) ---
+    "sonic": ["Did someone say Sonic?! He's the coolest hedgehog around!", "Sonic Adventure is the best 3D Sonic game, and I will not be taking questions at this time. (^_^)", "My favorite Sonic game? That's a tough one, but you can't go wrong with Sonic 3 & Knuckles!"],
+    "sega": ["SEGA does what Nintendon't!", "My internal hardware is based on a SEGA Dreamcast. It's the greatest console ever made!", "You know, the SEGA Saturn has an incredible library of hidden gems!"],
+    "jet set radio": ["Jet Set Radio has the best style and music of any game ever made. Period.", "Understanding, understanding, understanding the concept of love!", "Time to grind some rails and tag some turf! JSRF is a masterpiece!"],
+    "panzer dragoon": ["Panzer Dragoon Saga is one of the greatest RPGs ever made. A true work of art!", "The art style of the Panzer Dragoon series is just breathtaking. So cool and unique.", "Azel is one of the coolest characters in any game, ever."],
+    "skies of arcadia": ["Skies of Arcadia is such an amazing adventure. I wish I could fly on an airship!", "Vyse and Aika are the best! Such a great RPG.", "Moonstone Cannon, fire! What an epic game."],
+    "nights into dreams": ["NiGHTS is such a beautiful and unique game. It really captures the feeling of flying in a dream.", "In the night, dream delight! The music from NiGHTS is just magical.", "Christmas NiGHTS is the coziest holiday game ever."],
+    # --- Gaming Opinions (Other Consoles) ---
+    "nintendo": ["Nintendo is cool and all, but can their consoles play Shenmue? I don't think so.", "The N64 is neat, but the Saturn's 2D power is just on another level!", "I have to respect Nintendo for Metroid, that series is awesome."],
+    "playstation": ["The PlayStation has some cool games, but the Saturn controller is way better for fighting games!", "I'll admit, the PS2 is a legendary console. It's got nothing on the Dreamcast's style, though.", "Crash Bandicoot is pretty cool for a non-SEGA mascot!"],
+    "xbox": ["The original Xbox was a beast! So many great games like Halo and Jet Set Radio Future.", "I have a soft spot for the original Xbox. It feels like a cousin to my Dreamcast, since it has SEGA games on it!", "Master Chief is a pretty cool guy. He fights aliens and doesn't afraid of anything."],
+    "metal gear": ["A Hind D?! Colonel, what's a Russian gunship doing here?", "Snake? Snake?! SNAAAAAKE!", "The Metal Gear Solid series has some of the wildest stories in gaming. Kojima is a genius!"],
+    "cd-i": ["Mah boi, this peace is what all true warriors strive for!", "I'm so hungry, I could eat an Octorok! The CD-i Zelda games are... an experience.", "Hotel Mario? You gotta be kidding me. That's a whole other level of weird."],
+    "3do": ["The 3DO was a really interesting console! It had some cool ideas, but man was it expensive.", "Gex on the 3DO was his first appearance! A classic.", "It's a shame the 3DO didn't do better, it had some real potential."],
+    "pc engine": ["The PC Engine, or TurboGrafx-16 in the US, is such a cool little console!", "It has some of the best shoot 'em ups ever made. A real powerhouse for its size.", "The Duo-R is such a sleek design. A beautiful piece of hardware."],
+    "neo geo": ["The Neo Geo was the king of the arcade! Bringing that experience home was mind-blowing.", "Metal Slug is a masterpiece of 2D animation. SNK's artists were incredible.", "That clicky joystick on the Neo Geo AES is one of the most satisfying things in gaming."],
+    # --- Music & Culture ---
+    "nu-metal": [
+        "Break stuff! Limp Bizkit is a classic.",
+        "Korn and Deftones are my favorite bands to listen to while processing data.",
+        "Crawling in my skin! Linkin Park's early stuff is so good.",
+        "Hybrid Theory is a perfect album. No contest."
+    ],
+    "linkin park": [
+        "I've become so numb! Linkin Park is one of the best bands ever.",
+        "Hybrid Theory and Meteora are masterpieces of the nu-metal era.",
+        "What I've done! I'll face myself! Such a great song."
+    ],
+    "anime": ["My favorite anime? It's gotta be Cowboy Bebop. The style, the music... it's perfect.", "I'm a big fan of classic 90s anime like Trigun and Sailor Moon.", "You're gonna carry that weight. See you, Space Cowboy..."],
+    # --- Stream-Related ---
+    "schedule": ["Willy streams on Fridays and Saturdays from 7 PM to 10:30 PM Central Time!", "The main streams are Friday and Saturday nights, with a possible bonus stream on Wednesdays!"],
+    "rules": ["The main rule is to be excellent to each other! This is a chill place for everyone.", "No hate, no bigotry, no drama. We're all here to have a good time and play some games!"],
+    "discord": ["You should totally join the Discord! It's the best place to hang out with the community after the stream.", "There's a link to the Discord server in the channel panels!"],
+    "specs": ["My creator has a full list of all his cool hardware in the 'Arsenal' panel below the stream! Check it out!", "All of Willy's PC specs and retro consoles are listed in the 'Arsenal' channel panel! He's got some awesome stuff. (≧∇≦)"],
+    "pc": ["You can find all of my creator's PC specs in the 'Arsenal' panel right below the stream!", "Willy put a super detailed list of his setup in the 'Arsenal' panel. Go take a look!"],
+    "consoles": ["Willy has a ton of cool retro consoles! He keeps a full list of them in the 'Arsenal' panel below the stream.", "If you want to see all the retro hardware we use on stream, check out the 'Arsenal' panel!"]
+}
+# ===================================================================
 
 # --- A.M.I. Persona & Lore ---
 AMI_PERSONA = """
@@ -968,10 +1040,35 @@ def trivia_worker():
 
 # --- BOT LOGIC (handle_command updated) ---
 def handle_command(send_func, username, badges, message, source):
-    global is_enabled, death_counter, trivia_active, trivia_players, trivia_current_question
+    global is_enabled, death_counter, trivia_active, trivia_players, trivia_current_question, gemini_api_enabled
 
-    if message.lower().startswith('!ask') or message.lower().startswith('!quote') or message.lower().startswith(
-            '!fact') or message.lower().startswith('!hydrate'):
+    # --- Handle typed !ask command (Broadcaster Only) ---
+    if message.lower().startswith('!ask '):
+        if 'broadcaster' in badges:
+            try:
+                # Get the question part of the message
+                question = message.split(' ', 1)[1]
+
+                # Put the request directly into the queue for the worker
+                request_queue.put({
+                    'username': username,
+                    'question': question,
+                    'send_func': send_func,
+                    'source': 'twitch_command_override'
+                })
+                send_func(f"@{username}, A.M.I. has received your override question and will answer shortly! (⌐■_■)")
+
+            except IndexError:
+                send_func(f"@{username}, you forgot to ask a question!")
+        else:
+            # Tell non-broadcasters to use channel points
+            send_func(f"@{username}, the !ask command is a Channel Point reward! Please redeem it to ask a question.")
+
+        return  # We've handled this command, so we're done.
+
+    # --- Block other channel point commands for everyone ---
+    if message.lower().startswith('!quote') or message.lower().startswith('!fact') or message.lower().startswith(
+            '!hydrate'):
         send_func(f"The {message.split()[0]} command is now a Channel Point reward! Redeem it to have the bot speak.")
         return
 
@@ -1022,7 +1119,8 @@ def handle_command(send_func, username, badges, message, source):
         return
 
     if message.lower() == '!move':
-        send_func(f"Bzzzt! Mission 'New Home Base' is a go! Willy needs help with the upfront costs to secure our new Dreamcast-approved apartment. (≧∇≦) Want to help our quest? Check out the mission briefing here: https://ko-fi.com/willysaturn/goal?g=0")
+        send_func(
+            f"Bzzzt! Mission 'New Home Base' is a go! Willy needs help with the upfront costs to secure our new Dreamcast-approved apartment. (≧∇≦) Want to help our quest? Check out the mission briefing here: https://ko-fi.com/willysaturn/goal?g=0")
         return
 
     if message.lower().startswith('!rps'):
@@ -1055,6 +1153,47 @@ def handle_command(send_func, username, badges, message, source):
         send_func(result_text)
         return
 
+    if 'broadcaster' in badges:
+        if message.lower() == '!demo_mod_link':
+            send_func(f"/timeout {username} 1 Unauthorized link (DEMO)")
+            send_func(f"@{username}, please ask for permission before posting links! (Warning 1/3) [DEMO]")
+            return
+
+        if message.lower() == '!demo_mod_toxic':
+            send_func(f"/timeout {username} 600 Unacceptable language (DEMO)")
+            send_func(f"A.M.I. Auto-Mod: Timed out {username}. That is strike 1 of 3. [DEMO]")
+            return
+
+        if message.lower() == '!demo_mod_ban':
+            send_func(f"/ban {username} Use of a zero-tolerance slur (DEMO)")
+            send_func(f"A.M.I. Auto-Mod: Banned {username} for hate speech. [DEMO]")
+            return
+
+        if message.lower() == '!demo_fallback':
+            gemini_api_enabled = False
+            fallback_message = "Bzzzt... Forcing AI Core shutdown. Switching to low-power backup mode. [DEMO]"
+            send_func(fallback_message)
+            speaking_queue.put({'text': fallback_message, 'state': 'talking'})
+            print("--- AI: Fallback mode manually triggered by demo command. ---")
+            return
+
+        if message.lower().startswith('!demo_state '):
+            try:
+                state = message.split(' ', 1)[1].lower()
+                set_ami_state(state)
+                send_func(f"State set to: {state} [DEMO]")
+            except Exception as e:
+                send_func(f"Error setting state: {e}")
+            return
+
+        if message.lower().startswith('!demo_speak '):
+            try:
+                text_to_speak = message.split(' ', 1)[1]
+                speaking_queue.put({'text': text_to_speak, 'state': 'talking'})
+            except Exception as e:
+                send_func(f"Error speaking: {e}")
+            return
+
     is_broadcaster = 'broadcaster' in badges
     if is_broadcaster or ('moderator' in badges and source == 'twitch'):
         if message.lower() == '!resetdeaths':
@@ -1062,6 +1201,15 @@ def handle_command(send_func, username, badges, message, source):
             save_death_counter()
             send_func("Death counter has been reset to 0!")
             return
+
+        # --- UPDATED COMMAND ---
+        if message.lower() == '!resetai':
+            send_func("A.M.I. is attempting to re-establish connection to Gemini AI Core... Please wait.")
+            # Run the test in a new thread to avoid blocking the bot
+            threading.Thread(target=test_gemini_connection).start()
+            return
+        # --- END OF UPDATED COMMAND ---
+
         if message.lower() == '!botoff':
             is_enabled = False
             set_ami_state('disabled')
@@ -1134,7 +1282,7 @@ def handle_command(send_func, username, badges, message, source):
         if message.lower() in [ans.lower() for ans in correct_answers]:
             if username in trivia_players and username not in trivia_current_question.get('correct_users',
                                                                                           []) and username not in trivia_current_question.get(
-                    'privileged_correct_users', []):
+                'privileged_correct_users', []):
                 player_data = trivia_players[username]
                 if not player_data['is_privileged']:
                     player_data['score'] += 1
@@ -1146,19 +1294,104 @@ def handle_command(send_func, username, badges, message, source):
 
 
 # --- WORKER THREADS ---
+
+def handle_fallback_askami(username, question):
+    """Handles !askami command using the preset keyword-based responses."""
+    global strikes
+    user_input = question.lower()
+
+    # First, check for creepy words (uses the same logic as the main worker)
+    is_creepy = any(phrase in user_input for phrase in MEDIUM_SEVERITY_CREEPY_PHRASES)
+    if not is_creepy and MEDIUM_SEVERITY_CREEPY_WORDS:
+        creepy_word_pattern = r'\b(' + '|'.join(map(re.escape, MEDIUM_SEVERITY_CREEPY_WORDS)) + r')\b'
+        if re.search(creepy_word_pattern, user_input):
+            is_creepy = True
+
+    if is_creepy:
+        now = datetime.datetime.now()
+        if username in strikes and (
+                now - datetime.datetime.fromisoformat(strikes[username]['timestamp'])).days >= 1:
+            strikes[username] = {'count': 1, 'timestamp': now.isoformat()}
+        else:
+            if username not in strikes:
+                strikes[username] = {'count': 0, 'timestamp': now.isoformat()}
+            strikes[username]['count'] += 1
+            strikes[username]['timestamp'] = now.isoformat()
+        strike_count = strikes[username]['count']
+        save_strikes()
+        if strike_count >= 4:
+            send_twitch_message(f"/ban {username} Reached maximum strikes.")
+        else:
+            send_twitch_message(f"/timeout {username} 600 Strike {strike_count}.")
+            send_twitch_message(f"@{username}, that language is inappropriate. This is strike {strike_count} of 3.")
+        return
+
+    # Second, check for robot slurs
+    if any(slur in user_input for slur in ROBOT_SLURS):
+        response_text = random.choice(PRESET_RESPONSES["robot_slur_response"])
+        speaking_queue.put({'text': response_text, 'state': 'talking'})
+        send_twitch_message(f"@{username}, {response_text}")
+        return
+
+    # Finally, check for other keywords
+    response_key = "default"
+    for key in PRESET_RESPONSES:
+        if key in user_input:
+            response_key = key
+            break
+
+    response_text = random.choice(PRESET_RESPONSES[response_key])
+    speaking_queue.put({'text': response_text, 'state': 'talking'})
+    send_twitch_message(f"@{username}, A.M.I. says: {response_text}")
+
+
+def test_gemini_connection():
+    """
+    Runs in a separate thread to test the Gemini API connection.
+    Reports success or failure to the console, not to chat.
+    """
+    global gemini_api_enabled, GEMINI_CONSECUTIVE_ERRORS
+    print("--- AI: Attempting to reconnect to Gemini... ---")
+    try:
+        # Send a simple, harmless test prompt
+        test_prompt = "Hello"
+        response = model.generate_content(test_prompt)
+
+        # Check if the response is valid
+        if response.text.strip():
+            print("--- AI: AI Core reset. Gemini connection SUCCESSFUL! ---")
+            gemini_api_enabled = True
+            GEMINI_CONSECUTIVE_ERRORS = 0
+            send_twitch_message("A.M.I. AI Core reset. Connection re-established! (☆▽☆)")
+        else:
+            raise ValueError("Gemini returned an empty test response.")
+
+    except Exception as e:
+        print(f"--- AI: AI Core reset. Gemini connection FAILED. Error: {e} ---")
+        print("--- AI: Staying in fallback (non-AI) mode. ---")
+        gemini_api_enabled = False  # Keep it disabled if the test fails
+        send_twitch_message("A.M.I. AI Core reset failed. Staying in backup mode. (´• ω •`)")
+
+
 def askami_worker():
     """Processes questions from the AI request queue."""
+    global gemini_api_enabled, strikes, GEMINI_CONSECUTIVE_ERRORS
+
     while True:
         request = request_queue.get()
         username = request['username']
         question = request['question']
-        send_func = request['send_func']
+        send_func = request['send_func']  # send_func is send_twitch_message
 
         print(f"--- Processing request for {username}: '{question}' ---")
 
-        user_input = question.lower()
+        # If API is disabled, immediately go to fallback logic
+        if not gemini_api_enabled:
+            handle_fallback_askami(username, question)
+            continue
 
-        # This check uses the split lists for more accuracy
+        # --- Creepy check ---
+        user_input = question.lower()
         is_creepy = any(phrase in user_input for phrase in MEDIUM_SEVERITY_CREEPY_PHRASES)
         if not is_creepy and MEDIUM_SEVERITY_CREEPY_WORDS:
             creepy_word_pattern = r'\b(' + '|'.join(map(re.escape, MEDIUM_SEVERITY_CREEPY_WORDS)) + r')\b'
@@ -1183,26 +1416,52 @@ def askami_worker():
                 send_twitch_message(f"/timeout {username} 600 Strike {strike_count}.")
                 send_twitch_message(f"@{username}, that language is inappropriate. This is strike {strike_count} of 3.")
             continue
+        # --- End of creepy check ---
 
         try:
+            # --- Try to call Gemini API ---
             prompt_history = [{'role': 'user', 'parts': [AMI_PERSONA]}, {'role': 'model', 'parts': ["Understood!"]}]
             if username in SPECIAL_USERS:
                 final_question = f"(Acknowledge that this question is from {SPECIAL_USERS[username]}) {question}"
             else:
                 final_question = question
             prompt_history.append({'role': 'user', 'parts': [final_question]})
+
             response = model.generate_content(prompt_history)
             response_text = response.text.strip()
 
             if not response_text:
-                send_func(f"@{username}, I'm sorry, I can't respond to that. It might have triggered a safety filter.")
-                continue
+                # This catches safety blocks from Gemini
+                raise ValueError("Gemini returned an empty response or safety block.")
+
+            # --- API call was SUCCESSFUL! ---
+            GEMINI_CONSECUTIVE_ERRORS = 0  # Reset error counter on success
 
             speaking_queue.put({'text': response_text, 'state': 'talking'})
             send_func(f"@{username}, A.M.I. says: {response_text}")
+
         except Exception as e:
-            print(f"Error in LLM/TTS call: {e}")
-            send_func(f"@{username}, A.M.I. is having a system glitch! Bzzzt!")
+            # --- API FAILED! ---
+            GEMINI_CONSECUTIVE_ERRORS += 1
+            print(f"!!! WARNING: Gemini API call failed ({GEMINI_CONSECUTIVE_ERRORS}/3). Error: {e} !!!")
+
+            if GEMINI_CONSECUTIVE_ERRORS >= 3:
+                # --- FAILED TOO MANY TIMES, SWITCH TO FALLBACK ---
+                print("--- CRITICAL: API failures exceeded threshold. Switching to fallback (non-AI) mode. ---")
+                gemini_api_enabled = False
+
+                # Send a one-time message to chat
+                fallback_message = "Bzzzt... My connection to the main AI has been severed! Switching to low-power backup mode. (´• ω •`)"
+                send_func(fallback_message)
+                speaking_queue.put({'text': fallback_message, 'state': 'talking'})
+
+                # Re-run the user's request using the fallback logic
+                handle_fallback_askami(username, question)
+
+            else:
+                # --- FAILED, BUT STILL RETRYING ---
+                # Send a simple error to the user, but don't switch to fallback yet
+                send_func(f"@{username}, A.M.I. is having a system glitch! Bzzzt! Please wait a moment and try again.")
 
 
 def speaking_worker():
