@@ -208,3 +208,13 @@ __marimo__/
 
 # Ignore local moderation wordlists
 mod_lists/
+
+# Secret and credential files
+client_secret.json
+token.pickle
+
+# Runtime data files (scores, strikes, etc.)
+strikes.json
+infraction_strikes.json
+toxicity_strikes.json
+trivia_scores.json
