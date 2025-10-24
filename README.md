@@ -25,7 +25,7 @@ A.M.I. acts as a true stream companion by directly interacting with the broadcas
 ---
 ## 💻 Tech Stack
 * **Core Language:** Python 3
-* **AI:** Google Gemini API
+* **LLM:** Google Gemini API
 * **Text-to-Speech:** Amazon Polly
 * **Stream Events:** Twitch EventSub & Streamlabs API
 * **OBS Integration:** `obs-websocket`
